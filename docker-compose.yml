@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: nestjs_app
+    restart: always
+    env_file:
+      - .env.docker
+    depends_on:
+      - db
+    ports:
+      - "1311:1211"
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Admin123
+      POSTGRES_DB: LCT_LAPTOP
+    ports:
+      - "5432:5432"

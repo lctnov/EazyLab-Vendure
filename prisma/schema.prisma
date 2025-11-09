@@ -1,0 +1,93 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// =====================
+/// HỆ THỐNG NGƯỜI DÙNG
+/// =====================
+model SYS_USERS {
+  rowguid       String   @default(uuid()) @db.Uuid @unique
+  id            BigInt   @id @default(autoincrement())
+  email         String   @unique @db.VarChar(100)
+  username      String   @db.VarChar(50)
+  password      String   @db.VarChar(200)
+  expiredate    DateTime? @db.Timestamp(6)
+  birthday      DateTime? @db.Timestamp(6)
+  address       String?  @db.VarChar(500)
+  telphone      String?  @db.VarChar(50)
+  isactive      Boolean  @default(true)
+  role          String   @db.VarChar(20)
+  
+  createdby     String   @db.VarChar(20)
+  createdtime   DateTime @db.Timestamp(6)
+  modifiedby    String?  @db.VarChar(20)
+  modifiedtime  DateTime? @db.Timestamp(6)
+}
+
+// ========================
+// BUNDLE PLUGIN (Core A)
+// ========================
+model Bundle {
+  id             BigInt      @id @default(autoincrement())
+  code           String      @unique
+  name           String
+  description    String?
+  priceStrategy  String      @default("sum") // sum | fixed | percent
+  discountValue  Float?      @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  items          BundleItem[]
+}
+
+model BundleItem {
+  id               BigInt   @id @default(autoincrement())
+  bundleId         BigInt
+  productVariantId BigInt
+  quantity         Int      @default(1)
+
+  bundle           Bundle          @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  productVariant   ProductVariant  @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+
+  @@unique([bundleId, productVariantId])
+  @@map("bundle_item")
+}
+
+// ========================
+// PRODUCT VARIANT
+// ========================
+model ProductVariant {
+  id              BigInt   @id @default(autoincrement())
+  sku             String   @unique @db.VarChar(50)
+  name            String   @db.VarChar(200)
+  price           Float
+
+  stockOnHand     Int      @default(0)
+  reservedStock   Int      @default(0)
+  allocatedStock  Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bundleItems     BundleItem[]
+}
+
+// ========================
+// ORDER LINE
+// ========================
+model OrderLine {
+  id              BigInt   @id @default(autoincrement())
+  orderId         BigInt
+  bundleId        BigInt?
+  productVariantId BigInt?
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+  metadata        Json?
+}
