@@ -30,7 +30,7 @@ export class CurrentUserMiddleware implements NestMiddleware {
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       
-      const user: SYS_USERS | null = await this.prisma.client.sYS_USERS.findFirst({
+      const user: SYS_USERS | null = await this.prisma.sYS_USERS.findFirst({
         where: { email: payload.email },
       });
 

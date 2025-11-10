@@ -1,62 +1,76 @@
-import { PrismaService } from "@/libs/database/prisma.service";
-import { InventoryService } from "./inventory.service";
-import { Injectable } from "@nestjs/common";
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { PrismaService } from '@/libs/database/prisma.service';
+import { InventoryService } from './inventory.service';
+import { CmBundleService } from './cm_bundle.service';
 
 @Injectable()
 export class CartService {
+  private readonly logger = new Logger(CartService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly inventoryService: InventoryService,
+    private readonly bundleService: CmBundleService,
   ) {}
 
-  async addBundleToCart(bundleId: bigint, quantity: number) {
-    const bundle = await this.prisma.bundle.findUnique({
-      where: { id: bundleId },
-      include: { items: { include: { productVariant: true } } },
+  async addBundleToCart(
+    userId: string,
+    bundleId: string,
+    quantity: number = 1,
+  ): Promise<any> {
+    this.validateQuantity(quantity);
+
+    const bundle = await this.bundleService.getBundle(BigInt(bundleId));
+    if (!bundle) throw new NotFoundException('Bundle not found');
+
+    const totalPrice = bundle.finalPrice * quantity;
+
+    let order = await this.prisma.order.findFirst({
+      where: { userId, status: 'CART' },
     });
 
-    if (!bundle) throw new Error('Bundle not found');
-
-    // Reserve stock cho từng variant trong bundle
-    for (const item of bundle.items) {
-      await this.inventoryService.reserveStock(item.productVariantId, item.quantity * quantity);
+    if (!order) {
+      order = await this.prisma.order.create({
+        data: {
+          userId,
+          status: 'CART',
+          totalAmount: 0,
+        },
+      });
     }
 
-    // Tạo orderLine đại diện cho bundle
+    for (const item of bundle.items) {
+      const requiredStock = item.quantity * quantity;
+      await this.inventoryService.reserveStock(item.productVariant.id, requiredStock);
+    }
+
     const orderLine = await this.prisma.orderLine.create({
       data: {
-        bundleId,
+        orderId: order.id,
+        bundleId: bundle.id,
         quantity,
-        unitPrice: this.calculateBundlePrice(bundle),
-        totalPrice: this.calculateBundlePrice(bundle) * quantity,
+        unitPrice: bundle.finalPrice,
+        totalPrice,
         metadata: {
-          items: bundle.items.map((i) => ({
-            variant: i.productVariant.name,
-            qty: i.quantity,
+          bundleCode: bundle.code,
+          name: bundle.name,
+          items: bundle.items.map((i: any) => ({
+            sku: i.productVariant.sku,
+            name: i.productVariant.name,
             price: i.productVariant.price,
+            qty: i.quantity,
           })),
         },
       },
     });
 
+    this.logger.log(`Bundle ${bundleId} x${quantity} added to cart for user ${userId}`);
     return orderLine;
   }
 
-  private calculateBundlePrice(bundle: any): number {
-    const sum = bundle.items.reduce(
-      (acc, i) => acc + i.productVariant.price * i.quantity,
-      0,
-    );
-
-    switch (bundle.priceStrategy) {
-      case 'sum':
-        return sum;
-      case 'fixed':
-        return bundle.discountValue;
-      case 'percent':
-        return sum * (1 - bundle.discountValue / 100);
-      default:
-        return sum;
+  private validateQuantity(quantity: number): void {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException('Quantity must be a positive integer');
     }
   }
 }

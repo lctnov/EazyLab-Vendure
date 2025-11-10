@@ -1,24 +1,22 @@
+// src/apps/auth/controllers/auth.controller.ts
 import {
   Body,
   Controller,
-  Get,
   Post,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from '@/apps/auth/services/auth/auth.service';
 import { RegisterDto } from '@/apps/auth/dto/register.dto';
-import { LoginDto } from '../dto/login.dto';
+import { LoginDto } from '@/apps/auth/dto/login.dto';
 import { Request, Response } from 'express';
-import { JwtAuthGuard } from '@/libs/guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto): Promise<any> {
+  async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
@@ -29,12 +27,14 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.authService.logout(req.cookies['token'], res);
+    const token = req.cookies?.token;
+    return this.authService.logout(token, res);
   }
 
   @Post('exp')
   async expUsers(@Req() req: Request) {
-    return this.authService.expUsers(req.cookies['token']);
+    const token = req.cookies?.token;
+    return this.authService.expUsers(token);
   }
 
   @Post('refresh')

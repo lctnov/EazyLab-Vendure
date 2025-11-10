@@ -9,9 +9,9 @@ export interface BundleEntity {
   id: bigint;
   code: string;
   name: string;
-  description?: string;
+  description?: string | null;
   priceStrategy: 'sum' | 'fixed' | 'percent';
-  discountValue?: number;
+  discountValue?: number | null;
   fixedPrice?: number;
   createdAt: Date;
   updatedAt: Date;

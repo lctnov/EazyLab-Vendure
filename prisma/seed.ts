@@ -1,20 +1,38 @@
-import { PrismaClient } from '@prisma/client';
+// prisma/seed.ts
+import { PrismaClient, PriceStrategy, Prisma } from '@prisma/client';
 import { hash } from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  console.log('Clearing old data...');
+
+  const safeDelete = async (model: any, name: string) => {
+    try {
+      await model.deleteMany();
+      console.log(`Deleted all ${name}`);
+    } catch (e: any) {
+      if (e.code === 'P2021') {
+        console.log(`${name} table does not exist yet, skipping...`);
+      } else {
+        throw e;
+      }
+    }
+  };
+
+  await safeDelete(prisma.orderLine, 'order_line');
+  await safeDelete(prisma.bundleItem, 'bundle_item');
+  await safeDelete(prisma.bundle, 'bundle');
+  await safeDelete(prisma.productVariant, 'product_variant');
+  await safeDelete(prisma.sYS_USERS, 'SYS_USERS');
+
+  console.log('Old data cleared (or skipped).');
+
+  // === HASH MẬT KHẨU ===
   const hashedAdmin = await hash('admin123', 10);
   const hashedCustomer = await hash('customer@123', 10);
   const hashedEmployee = await hash('employee@123', 10);
-  
-  // console.log('🧹 Clearing old data...');
-  // await prisma.orderLine.deleteMany();
-  // await prisma.bundleItem.deleteMany();
-  // await prisma.bundle.deleteMany();
-  // await prisma.productVariant.deleteMany();
 
-  // --- Seed SYS_USERS ---
   await prisma.sYS_USERS.createMany({
     data: [
       {
@@ -48,37 +66,65 @@ async function main() {
     skipDuplicates: true,
   });
 
+  console.log('Seeded SYS_USERS.');
 
   // =============================
-  // PRODUCT VARIANTS
+  // PRODUCT VARIANTS – DÙNG Decimal
   // =============================
-  const productVariants = await prisma.productVariant.createMany({
-    data: [
-      { sku: 'VAR-001', name: 'Sữa rửa mặt dịu nhẹ', price: 120000, stockOnHand: 100 },
-      { sku: 'VAR-002', name: 'Kem chống nắng SPF50+', price: 180000, stockOnHand: 80 },
-      { sku: 'VAR-003', name: 'Serum Vitamin C', price: 250000, stockOnHand: 50 },
-      { sku: 'VAR-004', name: 'Kem dưỡng ẩm ban đêm', price: 300000, stockOnHand: 40 },
-    ],
+  const pv1 = await prisma.productVariant.create({
+    data: {
+      sku: 'VAR-001',
+      name: 'Sữa rửa mặt dịu nhẹ',
+      price: new Prisma.Decimal('119.99'),
+      stockOnHand: 100,
+    },
   });
 
-  console.log('✅ Created Product Variants.');
+  const pv2 = await prisma.productVariant.create({
+    data: {
+      sku: 'VAR-002',
+      name: 'Kem chống nắng SPF50+',
+      price: new Prisma.Decimal('179.50'),
+      stockOnHand: 80,
+    },
+  });
 
-  const [pv1, pv2, pv3, pv4] = await prisma.productVariant.findMany({
-    orderBy: { id: 'asc' },
+  const pv3 = await prisma.productVariant.create({
+    data: {
+      sku: 'VAR-003',
+      name: 'Serum Vitamin C',
+      price: new Prisma.Decimal('249.99'),
+      stockOnHand: 50,
+    },
+  });
+
+  const pv4 = await prisma.productVariant.create({
+    data: {
+      sku: 'VAR-004',
+      name: 'Kem dưỡng ẩm ban đêm',
+      price: new Prisma.Decimal('299.99'),
+      stockOnHand: 40,
+    },
+  });
+
+  console.log('Created Product Variants:', {
+    pv1: pv1.id,
+    pv2: pv2.id,
+    pv3: pv3.id,
+    pv4: pv4.id,
   });
 
   // =============================
-  // BUNDLES
+  // BUNDLES – DÙNG Decimal
   // =============================
-
-  // Bundle 1 - Tổng giá (sum)
   const bundleSum = await prisma.bundle.create({
     data: {
       code: 'BUNDLE_SUM',
       name: 'Combo dưỡng da cơ bản',
       description: 'Sữa rửa mặt + Kem chống nắng, tính tổng giá gốc',
-      priceStrategy: 'sum',
-      discountValue: 0,
+      priceStrategy: PriceStrategy.SUM,
+      discountValue: new Prisma.Decimal(0),
+      fixedPrice: null,
       items: {
         create: [
           { productVariantId: pv1.id, quantity: 1 },
@@ -89,14 +135,14 @@ async function main() {
     include: { items: true },
   });
 
-  // Bundle 2 - Giá cố định (fixed)
   const bundleFixed = await prisma.bundle.create({
     data: {
       code: 'BUNDLE_FIXED',
       name: 'Combo chăm sóc da chuyên sâu',
-      description: 'Giá cố định 400k cho bộ 3 sản phẩm cao cấp',
-      priceStrategy: 'fixed',
-      discountValue: 400000,
+      description: 'Giá cố định 399.99 cho bộ 3 sản phẩm cao cấp',
+      priceStrategy: PriceStrategy.FIXED,
+      discountValue: new Prisma.Decimal(0),
+      fixedPrice: new Prisma.Decimal('399.99'),
       items: {
         create: [
           { productVariantId: pv2.id, quantity: 1 },
@@ -108,14 +154,14 @@ async function main() {
     include: { items: true },
   });
 
-  // Bundle 3 - Giảm phần trăm (percent)
   const bundlePercent = await prisma.bundle.create({
     data: {
       code: 'BUNDLE_PERCENT',
       name: 'Combo dưỡng sáng da',
       description: 'Giảm 15% tổng giá sản phẩm trong combo',
-      priceStrategy: 'percent',
-      discountValue: 15,
+      priceStrategy: PriceStrategy.PERCENT,
+      discountValue: new Prisma.Decimal(15),
+      fixedPrice: null,
       items: {
         create: [
           { productVariantId: pv1.id, quantity: 1 },
@@ -126,55 +172,64 @@ async function main() {
     include: { items: true },
   });
 
-  console.log('✅ Created Bundles & BundleItems.');
+  console.log('Created Bundles:', {
+    sum: bundleSum.id,
+    fixed: bundleFixed.id,
+    percent: bundlePercent.id,
+  });
 
   // =============================
-  // ORDER LINES (demo)
+  // ORDER
   // =============================
-  const orders = await prisma.orderLine.createMany({
+  const order1 = await prisma.order.upsert({
+    where: { id: 1001n },
+    update: {},
+    create: {
+      id: 1001n,
+      userId: 'customer@example.com',
+      status: 'CART',
+      totalAmount: new Prisma.Decimal(0),
+    },
+  });
+
+  // =============================
+  // ORDER LINES – DÙNG Decimal.mul()
+  // =============================
+  await prisma.orderLine.createMany({
     data: [
       {
-        orderId: 1001,
+        orderId: order1.id,
         productVariantId: pv1.id,
         quantity: 2,
         unitPrice: pv1.price,
-        totalPrice: pv1.price * 2,
+        totalPrice: pv1.price.mul(2), // DÙNG .mul()
       },
       {
-        orderId: 1001,
+        orderId: order1.id,
         bundleId: bundleFixed.id,
         quantity: 1,
-        unitPrice: bundleFixed.discountValue ?? 0,
-        totalPrice: bundleFixed.discountValue ?? 0,
+        unitPrice: bundleFixed.fixedPrice ?? new Prisma.Decimal(0),
+        totalPrice: bundleFixed.fixedPrice ?? new Prisma.Decimal(0),
       },
       {
-        orderId: 1002,
+        orderId: order1.id,
         bundleId: bundlePercent.id,
         quantity: 1,
-        unitPrice: 0, // demo: sẽ tính theo công thức nếu có service tính giá
-        totalPrice: 0,
+        unitPrice: new Prisma.Decimal(0),
+        totalPrice: new Prisma.Decimal(0),
       },
     ],
   });
 
-  console.log('✅ Created OrderLines.');
-
-  // =============================
-  // Summary output
-  // =============================
-  const bundles = [bundleSum, bundleFixed, bundlePercent];
-  console.log('\n💰 Bundle Summary:');
-  for (const b of bundles) {
-    console.log(`- ${b.code}: strategy=${b.priceStrategy}, discount=${b.discountValue}`);
-  }
-
-  console.log('\n🌱 Seeding completed successfully!');
-
+  console.log('Created OrderLines.');
+  console.log('\nSEEDING COMPLETED SUCCESSFULLY!');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('Seeding failed:', e);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

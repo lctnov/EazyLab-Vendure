@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsIn, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsNumber } from 'class-validator';
+import { PriceStrategy, Prisma } from '@prisma/client';
 
 export class UpdateBundleDto {
   @IsOptional()
@@ -10,14 +11,14 @@ export class UpdateBundleDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(['sum', 'fixed', 'percent'])
-  priceStrategy?: 'sum' | 'fixed' | 'percent';
+  @IsEnum(PriceStrategy, { message: 'priceStrategy must be SUM, FIXED or PERCENT' })
+  priceStrategy?: PriceStrategy; // DÙNG ENUM
 
   @IsOptional()
   @IsNumber()
-  fixedPrice?: number;
+  discountValue?: Prisma.Decimal | 0;
 
   @IsOptional()
   @IsNumber()
-  discountValue?: number;
+  fixedPrice?: Prisma.Decimal | 0;
 }

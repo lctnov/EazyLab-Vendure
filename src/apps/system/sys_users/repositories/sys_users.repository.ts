@@ -8,15 +8,15 @@ export class SysUsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findAll(params?: any) {
-    return this.prisma.client.sYS_USERS.findMany(params);
+    return this.prisma.sYS_USERS.findMany(params);
   }
 
   findOne(rowguid: string) {
-    return this.prisma.client.sYS_USERS.findUnique({ where: { rowguid } });
+    return this.prisma.sYS_USERS.findUnique({ where: { rowguid } });
   }
 
   create(dto: CreateSysUserDto) {
-    return this.prisma.client.sYS_USERS.create({
+    return this.prisma.sYS_USERS.create({
       data: {
         email: dto.email,
         username: dto.username,
@@ -35,18 +35,18 @@ export class SysUsersRepository {
 
   // update(rowguid: string, data: UpdateSysUserDto) {
   //   let data:any = {...data, role: 'admin'};
-  //   return this.prisma.client.sYS_USERS.update({
+  //   return this.prisma.sYS_USERS.update({
   //     where: { rowguid },
   //     data,
   //   });
   // }
 
   delete(rowguid: string) {
-    return this.prisma.client.sYS_USERS.delete({ where: { rowguid } });
+    return this.prisma.sYS_USERS.delete({ where: { rowguid } });
   }
 
   deleteMany(rowguid: string[]) {
-    return this.prisma.client.sYS_USERS.deleteMany({
+    return this.prisma.sYS_USERS.deleteMany({
       where: { rowguid: { in: rowguid } },
     });
   }

@@ -7,48 +7,62 @@ import { Prisma } from '@prisma/client';
 export class CmBundleRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private readonly includeItems = { include: { items: true } };
+  // Gộp include 2 tầng: items + productVariant
+  private readonly bundleInclude = {
+    include: {
+      items: {
+        include: {
+          productVariant: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              sku: true,
+            },
+          },
+        },
+      },
+    },
+  };
 
   // -----------------------------
   // Bundle queries
   // -----------------------------
-
-  async findAll(): Promise<BundleEntity[]> {
-    return this.prisma.bundle.findMany(this.includeItems);
-  }
-
-  async findById(id: bigint) {
-    return this.prisma.bundle.findUnique({
-      where: { id },
-      include: { items: true }, // 👈 thêm dòng này
-    });
+  async findAll() {
+    return await this.prisma.bundle.findMany(this.bundleInclude);
   }
   
+  async findById(id: bigint): Promise<BundleEntity | null> {
+    return this.prisma.bundle.findUnique({
+      where: { id: Number(id) },
+      ...this.bundleInclude,
+    }) as unknown as BundleEntity | null;
+  }
 
   async findByCode(code: string): Promise<BundleEntity | null> {
     return this.prisma.bundle.findUnique({
       where: { code },
-      ...this.includeItems,
-    });
+      ...this.bundleInclude,
+    }) as unknown as BundleEntity | null;
   }
 
   async create(data: Prisma.BundleCreateInput): Promise<BundleEntity> {
     return this.prisma.bundle.create({
       data,
-      ...this.includeItems,
-    });
+      ...this.bundleInclude,
+    }) as unknown as BundleEntity;
   }
 
   async update(id: bigint, data: Prisma.BundleUpdateInput): Promise<BundleEntity> {
     return this.prisma.bundle.update({
-      where: { id },
+      where: { id: Number(id) },
       data,
-      ...this.includeItems,
-    });
+      ...this.bundleInclude,
+    }) as unknown as BundleEntity;
   }
 
   async delete(id: bigint): Promise<void> {
-    await this.prisma.bundle.delete({ where: { id } });
+    await this.prisma.bundle.delete({ where: { id: Number(id) } });
   }
 
   // -----------------------------
@@ -56,25 +70,31 @@ export class CmBundleRepository {
   // -----------------------------
 
   async findItemById(id: bigint): Promise<BundleItemEntity | null> {
-    return this.prisma.bundleItem.findUnique({ where: { id } });
+    return this.prisma.bundleItem.findUnique({
+      where: { id: Number(id) },
+      include: { productVariant: true },
+    });
   }
 
   async findItemsByBundle(bundleId: bigint): Promise<BundleItemEntity[]> {
-    return this.prisma.bundleItem.findMany({ where: { bundleId } });
+    return this.prisma.bundleItem.findMany({
+      where: { bundleId: Number(bundleId) },
+      include: { productVariant: true },
+    });
   }
 
   async addItem(data: { bundleId: bigint; productVariantId: bigint; quantity: number }) {
     return this.prisma.bundleItem.create({
       data: {
-        bundleId: data.bundleId,
-        productVariantId: data.productVariantId,
+        bundleId: Number(data.bundleId),
+        productVariantId: Number(data.productVariantId),
         quantity: data.quantity,
       },
+      include: { productVariant: true },
     });
   }
-  
 
   async removeItem(itemId: bigint): Promise<void> {
-    await this.prisma.bundleItem.delete({ where: { id: itemId } });
+    await this.prisma.bundleItem.delete({ where: { id: Number(itemId) } });
   }
 }

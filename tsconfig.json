@@ -20,8 +20,8 @@
     "paths": {
       "@/*": ["*"],
       "@common/*": ["common/*"],
-      "@libs/*": ["libs/*"],
-      "@apps/*": ["apps/*"]
+      "@libs": ["libs/index.ts"],
+      "@libs/*": ["libs/*"]
     }
   },
   "include": ["src"],
