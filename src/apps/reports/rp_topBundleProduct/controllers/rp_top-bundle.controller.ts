@@ -11,7 +11,7 @@ export class ReportController {
 	constructor(private readonly reportService: ReportService) {}
   
 	@Get('top-bundles')
-	@ApiOperation({ summary: 'Top bundle bán chạy theo doanh thu' })
+	@ApiOperation({ summary: 'Top các gói sản phẩm bán chạy theo doanh thu' })
 	@ApiQuery({ name: 'from', type: String, example: '2025-11-01' })
 	@ApiQuery({ name: 'to', type: String, example: '2025-11-12' })
 	@ApiQuery({ name: 'limit', type: Number, required: false, example: 10 })

@@ -17,6 +17,10 @@ export class ReportService {
     to: Date,
     limit: number = 10,
   ): Promise<TopBundleReport[]> {
+    console.log('from', from);
+    console.log('to', to);
+    console.log('limit', limit);
+    
     const result = await this.prisma.$queryRaw<
       Array<{
         bundleCode: string;
@@ -28,17 +32,17 @@ export class ReportService {
       SELECT
         b."code" AS "bundleCode",
         b."name" AS "bundleName",
-        COUNT(DISTINCT ol."orderId") AS "totalOrders",
+        COUNT(DISTINCT o."orderId") AS "totalOrders",
         SUM(ol."totalPrice") AS "totalRevenue"
       FROM "order_line" ol
       JOIN "bundle" b ON ol."bundleId" = b."bundleId"
       JOIN "order" o ON ol."orderId" = o."orderId"
-      WHERE 
+      WHERE
         ol."bundleId" IS NOT NULL
         AND o."status" = 'SHIPPED'
         AND o."createdtime" >= ${from}
         AND o."createdtime" < ${to}
-      GROUP BY b."bundleId", b."code", b."name"
+      GROUP BY b."code", b."name"
       ORDER BY "totalRevenue" DESC
       LIMIT ${limit}
     `;

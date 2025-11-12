@@ -80,19 +80,19 @@ npm run start:prod
 # POST       /api/v1/create                                          Thêm sản phẩm vào giỏ hàng
 ##################################################################################################
 
-#################################### API - Quản lý gói sản phẩm ####################################
-# GET       /api/v1/getAll                                        Lấy tất cả các gói sản phẩm
+#################################### API - Quản lý hàng tồn kho ####################################
+# GET       /api/v1/get/{varianID}                                      Lấy danh sách hàng tồn kho
 ####################################################################################################
 
 #################################### API - Quản lý đơn hàng ########################################
-# GET       /api/v1/getAll                                        Lấy tất cả các gói sản phẩm
-# GET       /api/v1/get/{bundleID}                                 Lấy chi tiết sản phẩm theo gói
+# POST       /api/v1/approve                                        Xác nhận thanh toán
+# POST       /api/v1/cancel                                         Hủy đơn hàng
+# POST       /api/v1/ship/{orderID}                                 Giao hàng (giảm tồn kho thực)
 ####################################################################################################
 
-## Bundle trong Cart/Order – 2 cách hiển thị
-
-### Cách 1: **1 dòng duy nhất (khuyên dùng)**
-
+#################################### API - Quản lý báo cáo ########################################
+# GET       /api/v1/top-bundle                                        Top các gói sản phẩm (giảm hàng tồn kho thực)
+####################################################################################################
 # CÁC YÊU CẦU - TRƯỚC KHI TEST YÊU CẦU NGƯỜI DÙNG PHẢI TOKEN TRƯỚC KHI BẮT DẦU SỬ DỤNG API
 # API - POST      /api/v1/login                                        Chức năng đăng nhập
 # Tài khoản email và mật khẩu được tạo trong file seed.ts
@@ -173,3 +173,6 @@ npm run start:prod
 #  "bundleId": 1,
 #  "quantity": 0
 # }
+
+## Bundle trong Cart/Order – 2 cách hiển thị
+### Cách 1: **1 dòng duy nhất (khuyên dùng)**
