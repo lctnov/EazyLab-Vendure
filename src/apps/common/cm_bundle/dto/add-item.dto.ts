@@ -5,7 +5,8 @@ export class AddItemDto {
   @IsNotEmpty()
   @IsInt()
   @Type(() => Number)
-  variantId: number;
+  @Min(1)
+  variantId!: number;
 
   @IsInt()
   @Min(1, { message: 'Quantity must be >= 1' })

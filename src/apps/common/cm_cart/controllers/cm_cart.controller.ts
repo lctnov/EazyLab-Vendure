@@ -23,59 +23,16 @@ export class CartController {
 		return this.cartService.getCart(userId.toString());
 	}
 	
-	@Post('create/:cartID')
-	@UsePipes(new ValidationPipe({ transform: true }))
+	@Post('create')
+	@ApiOperation({ summary: 'Thêm bundle vào giỏ hàng' })
 	@ApiBearerAuth()
-	@ApiOperation({
-	  summary: 'Thêm sản phẩm vào giỏ hàng',
-	  description:
-		'Tạo danh sách đơn hàng đại diện cho sản phẩm với giá đã tính + dữ liệu chi tiết',
-	})
-	@ApiParam({
-	  name: 'cartId',
-	  description: 'Mã thanh toán của sản phẩm !!!',
-	  example: 2,
-	  type: 'number',
-	})
-	@ApiBody({
-	  type: AddBundleDto,
-	  description: 'Số lượng (tùy chọn, mặc định 1 !!!)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Danh sách đơn hàng đã được tạo !!!',
-		schema: {
-				example: {
-					cartId: 101,
-					orderId: 1001,
-					bundleId: 2,
-					quantity: 1,
-					unitPrice: 399.99,
-					totalPrice: 399.99,
-					metadata: {
-						bundleCode: 'BUNDLE_FIXED',
-						name: 'Combo chăm sóc da chuyên sâu',
-						priceStrategy: 'FIXED',
-						finalPrice: 399.99,
-						items: [
-						{ sku: 'VAR-002', name: 'Kem chống nắng SPF50+', price: 179.5, quantity: 1 },
-						{ sku: 'VAR-003', name: 'Serum Vitamin C', price: 249.99, quantity: 1 },
-						{ sku: 'VAR-004', name: 'Kem dưỡng ẩm ban đêm', price: 299.99, quantity: 1 },
-						],
-					},
-				},
-		},
-	})
-	@ApiResponse({ status: 400, description: 'Số lượng hoặc sản phẩm trùng mã thanh toán !!!' })
-	@ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm !!!' })
-	async addBundle(
+	@ApiBody({ type: AddBundleDto })
+	@ApiResponse({ status: 201, description: 'Thêm thành công, trả về OrderLine cha' })
+	async addBundleToCart(
 	@Req() req: Request & { user: any },
-	@Param('bundleId', ParseIntPipe) bundleId: number,
 	@Body() dto: AddBundleDto,
 	) {
-	  const userId = req.user.rowguid;
-	  const quantity = dto.quantity ?? 1;
-  
-	  return this.cartService.addBundleToCart(userId, BigInt(bundleId), quantity);
+		const userId = req.user.rowguid;
+		return this.cartService.addBundleToCart(userId, BigInt(dto.bundleId), dto.quantity);
 	}
   }

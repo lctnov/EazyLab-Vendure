@@ -1,4 +1,3 @@
-// src/apps/common/cm_bundle/services/cm_bundle.service.ts
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CmBundleRepository } from '../repositories/cm_bundle.repository';
 import { CreateBundleDto } from '../dto/create-cm_bundle.dto';
@@ -26,30 +25,76 @@ export class CmBundleService {
   }
 
   async createBundle(dto: CreateBundleDto): Promise<BundleEntity & { finalPrice: number }> {
+    // 1. Kiểm tra code trùng
     const exists = await this.repo.findByCode(dto.code);
-    if (exists) throw new BadRequestException('Sản phẩm đã tồn tại');
-
+    if (exists) throw new BadRequestException('Mã bundle đã tồn tại');
+  
+    // 2. Validate items
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Bundle phải có ít nhất 1 sản phẩm');
+    }
+  
+    const variantIds = dto.items.map(i => i.variantId);
+    const uniqueVariantIds = new Set(variantIds);
+    if (uniqueVariantIds.size !== variantIds.length) {
+      throw new BadRequestException('Không được thêm variant trùng trong bundle');
+    }
+  
+    // 3. Validate quantity >= 1
+    for (const item of dto.items) {
+      if (!item.quantity || item.quantity < 1) {
+        throw new BadRequestException('Số lượng phải >= 1');
+      }
+    }
+  
+    // 4. Validate theo priceStrategy
+    switch (dto.priceStrategy) {
+      case 'SUM':
+        if (dto.fixedPrice != null || dto.discountValue != null) {
+          throw new BadRequestException('SUM không được có fixedPrice hoặc discountValue');
+        }
+        break;
+      case 'FIXED':
+        if (dto.fixedPrice == null) {
+          throw new BadRequestException('FIXED phải có fixedPrice');
+        }
+        if (dto.discountValue != null) {
+          throw new BadRequestException('FIXED không được có discountValue');
+        }
+        break;
+      case 'PERCENT':
+        if (dto.discountValue == null || dto.discountValue <= 0 || dto.discountValue >= 100) {
+          throw new BadRequestException('PERCENT phải có discountValue từ 1 đến 99');
+        }
+        if (dto.fixedPrice != null) {
+          throw new BadRequestException('PERCENT không được có fixedPrice');
+        }
+        break;
+      default:
+        throw new BadRequestException('priceStrategy không hợp lệ');
+    }
+  
+    // 5. Tạo bundle
     const bundle = await this.repo.create({
       code: dto.code,
       name: dto.name,
       description: dto.description ?? null,
-      priceStrategy: dto.priceStrategy ?? null,
-      discountValue: new Prisma.Decimal(dto.discountValue) ?? null,
-      fixedPrice: dto.fixedPrice ? new Prisma.Decimal(dto.fixedPrice) : null,
+      priceStrategy: dto.priceStrategy,
+      fixedPrice: dto.fixedPrice != null ? new Prisma.Decimal(dto.fixedPrice) : null,
+      discountValue: dto.discountValue != null ? new Prisma.Decimal(dto.discountValue) : undefined,
       createdby: 'admin',
       createdtime: now(),
-      items: dto.items
-        ? {
-            create: dto.items.map((i) => ({
-              variantId: BigInt(i.variantId),
-              quantity: i.quantity ?? null,
-              createdby: 'admin',
-              createdtime: now(),
-            })),
-          }
-        : undefined,
+      items: {
+        create: dto.items.map((i) => ({
+          variantId: BigInt(i.variantId),
+          quantity: i.quantity,
+          createdby: 'admin',
+          createdtime: now(),
+        })),
+      },
     });
-
+  
+    // 6. Tính finalPrice
     return this.withFinalPrice(bundle);
   }
 
@@ -79,6 +124,25 @@ export class CmBundleService {
     return this.withFinalPrice(updated);
   }
 
+  // async addItem(bundleId: bigint, dto: AddItemDto) {
+  //   const bundle = await this.repo.findById(bundleId);
+  //   if (!bundle) throw new NotFoundException('Không tìm thấy sản phẩm !!!');
+
+  //   const variantIdBigInt = BigInt(dto.variantId);
+
+  //   const exists = bundle.items?.some(item => item.variantId === variantIdBigInt);
+  //   if (exists) throw new BadRequestException('Variant đã tồn tại');
+
+  //   await this.repo.addItem({
+  //     bundleId,
+  //     variantId: variantIdBigInt,
+  //     quantity: dto.quantity ?? null,
+  //   });
+
+  //   const updated = await this.repo.findById(bundleId);
+  //   return this.withFinalPrice(updated!);
+  // }
+
   async addItem(bundleId: bigint, dto: AddItemDto) {
     const bundle = await this.repo.findById(bundleId);
     if (!bundle) throw new NotFoundException('Không tìm thấy sản phẩm !!!');
@@ -97,7 +161,7 @@ export class CmBundleService {
     const updatedBundle = await this.repo.findById(bundleId);
     return this.withFinalPrice(updatedBundle!);
   }
-
+  
   async removeItem(bundleItemId: bigint) {
     const exists = await this.repo.findItemById(bundleItemId);
     if (!exists) throw new NotFoundException('Không tìm thấy danh sách sản phẩm !!!');

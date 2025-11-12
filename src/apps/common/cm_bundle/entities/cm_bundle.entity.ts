@@ -6,7 +6,7 @@ export type BundleEntity = {
   name: string;
   description: string | null;
   priceStrategy: 'SUM' | 'FIXED' | 'PERCENT';
-  discountValue: Decimal;
+  discountValue: Decimal | null;
   fixedPrice: Decimal | null;
   createdby: string;
   createdtime: Date;

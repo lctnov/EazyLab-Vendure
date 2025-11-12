@@ -1,23 +1,20 @@
-# Dockerfile
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package.json + package-lock.json và cài dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm ci --only=production
 
-# Copy toàn bộ source code
 COPY . .
 
-# Generate Prisma client
+# TỰ ĐỘNG LOAD .env.docker
+ENV NODE_ENV=docker
+
+# Generate Prisma Client với .env.docker
 RUN npx prisma generate
 
-# Build NestJS
 RUN npm run build
 
-# Expose port NestJS
 EXPOSE 1211
 
-# Chạy entrypoint script
 ENTRYPOINT ["sh", "docker-entrypoint.sh"]

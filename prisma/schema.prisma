@@ -66,7 +66,7 @@ model Bundle {
   name          String        @db.VarChar(200)
   description   String?       @db.Text
   priceStrategy PriceStrategy @default(SUM)
-  discountValue Decimal       @db.Decimal(10, 2)
+  discountValue Decimal?      @db.Decimal(10, 2)
   fixedPrice    Decimal?      @db.Decimal(10, 2)
 
   createdby     String        @db.VarChar(20)

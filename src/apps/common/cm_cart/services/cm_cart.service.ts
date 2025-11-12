@@ -31,7 +31,7 @@ export class CartService {
   async addBundleToCart(
     userId: string,
     bundleId: bigint,
-    quantity: number = 1,
+    quantity: number = 1
   ) {
     if (!Number.isInteger(quantity) || quantity <= 0) {
       throw new BadRequestException('Số lượng phải là số dương !!!');
@@ -40,11 +40,7 @@ export class CartService {
     // 1. LẤY BUNDLE + ITEMS + VARIANT
     const bundle = await this.prisma.bundle.findUnique({
       where: { bundleId },
-      include: {
-        items: {
-          include: { productVariant: true },
-        },
-      },
+      include: { items: { include: { productVariant: true } } },
     });
 
     if (!bundle) throw new NotFoundException('Không tìm thấy sản phẩm !!!');
@@ -99,9 +95,12 @@ export class CartService {
         qty: item.quantity,
         price: item.productVariant.price.toString(),
       })),
-      // Thêm fixedPrice nếu cần
-      ...(bundle.priceStrategy === 'FIXED' && { fixedPrice: bundle.fixedPrice?.toString() }),
-      ...(bundle.priceStrategy === 'PERCENT' && { discount: bundle.discountValue.toString() }),
+      ...(bundle.priceStrategy === 'FIXED' && bundle.fixedPrice && {
+        fixedPrice: bundle.fixedPrice.toString(),
+      }),
+      ...(bundle.priceStrategy === 'PERCENT' && bundle.discountValue && {
+        discount: bundle.discountValue.toString(),
+      }),
     };
 
     const parentLine = await this.prisma.orderLine.create({
