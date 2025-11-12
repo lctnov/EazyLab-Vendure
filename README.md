@@ -77,7 +77,7 @@ npm run start:prod
 
 ############################### API - Quản lý danh sách thanh toán ###############################
 # GET        /api/v1/getOrderLine                                    Lấy giỏ hàng của người dùng
-# POST       /api/v1/create/{cartID}                                 Thêm sản phẩm vào giỏ hàng
+# POST       /api/v1/create                                          Thêm sản phẩm vào giỏ hàng
 ##################################################################################################
 
 #################################### API - Quản lý gói sản phẩm ####################################
@@ -151,8 +151,25 @@ npm run start:prod
 # DELETE    /api/v1/bundleItems/{bundleID}                        Xóa các gói chi tiết sản phẩm
 # bundleItemId = 5
 
-# THÊM BUNDLE VÀO GIỎ HÀNG
-# POST       /api/v1/create/{cartID}                                 Thêm sản phẩm vào giỏ hàng
+# THÊM GÓI SẢN PHẨM VÀO GIỎ HÀNG
+# POST       /api/v1/create                                       Thêm sản phẩm vào giỏ hàng
+# {
+#  "bundleId": 1,
+#  "quantity": 1
+# }
 
-#Test Cart + Order Flow
-#Test Validation, Concurrency, Inventory
+# TRÙNG VARIANT TRONG BUNDLE
+# POST      /api/v1/create                                        Tạo mới gói sản phẩm
+# {
+#  "bundleId": 1,
+#  "variantId": 1,
+#  "quantity": 1
+# }
+
+
+# [VALIDATION] QUANTITY < 1
+# POST       /api/v1/create                                       Thêm sản phẩm vào giỏ hàng
+# {
+#  "bundleId": 1,
+#  "quantity": 0
+# }

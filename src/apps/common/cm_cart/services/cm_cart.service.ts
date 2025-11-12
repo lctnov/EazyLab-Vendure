@@ -15,21 +15,28 @@ export class CartService {
     private readonly inventoryService: InventoryService,
   ) {}
 
-  // === GET CART – ẨN CHILDREN LINES ===
-  async getCart(userId: string) {
+  // === GET CART ===
+  async getCart(userGuid: string) {
+    const user = await this.prisma.sYS_USERS.findUnique({
+      where: { rowguid: userGuid },
+      select: { userId: true },
+    });
+
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+
     const cart = await this.prisma.order.findFirst({
-      where: { userId: BigInt(userId), status: 'CART' },
+      where: { userId: user.userId, status: 'CART' },
       select: CART_SELECT,
     });
-  
+
     if (!cart) throw new NotFoundException('Giỏ hàng trống');
-  
+
     return cart;
   }
 
   @Transactional()
   async addBundleToCart(
-    userId: string,
+    userGuid: string,
     bundleId: bigint,
     quantity: number = 1
   ) {
@@ -37,7 +44,17 @@ export class CartService {
       throw new BadRequestException('Số lượng phải là số dương !!!');
     }
 
-    // 1. LẤY BUNDLE + ITEMS + VARIANT
+    // 1. Lấy userId từ rowguid
+    const user = await this.prisma.sYS_USERS.findUnique({
+      where: { rowguid: userGuid },
+      select: { userId: true },
+    });
+
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+
+    const userId = user.userId;
+
+    // 2. LẤY BUNDLE
     const bundle = await this.prisma.bundle.findUnique({
       where: { bundleId },
       include: { items: { include: { productVariant: true } } },
@@ -45,19 +62,18 @@ export class CartService {
 
     if (!bundle) throw new NotFoundException('Không tìm thấy sản phẩm !!!');
 
-    // 2. TÍNH GIÁ
+    // 3. TÍNH GIÁ
     const finalPrice = this.bundleService.calculateFinalPrice(bundle);
     const unitPrice = new Prisma.Decimal(finalPrice);
     const totalPrice = unitPrice.mul(quantity);
 
-    // TÍNH originalSum CHO metadata
     const originalSum = bundle.items.reduce((acc, item) => {
       const price = new Prisma.Decimal(item.productVariant.price);
       const qty = new Prisma.Decimal(item.quantity);
       return acc.plus(price.mul(qty));
     }, new Prisma.Decimal(0));
 
-    // 3. RESERVE STOCK
+    // 4. RESERVE STOCK
     const itemsToReserve = bundle.items.map((item) => ({
       variantId: item.variantId,
       quantity: item.quantity * quantity,
@@ -65,16 +81,15 @@ export class CartService {
 
     await this.inventoryService.reserveStock(itemsToReserve);
 
-    // 4. TẠO/LẤY GIỎ HÀNG
-    const userBigInt = BigInt(userId);
+    // 5. TẠO/LẤY GIỎ HÀNG
     let order = await this.prisma.order.findFirst({
-      where: { userId: userBigInt, status: 'CART' },
+      where: { userId, status: 'CART' },
     });
 
     if (!order) {
       order = await this.prisma.order.create({
         data: {
-          userId: userBigInt,
+          userId,
           status: 'CART',
           totalAmount: new Prisma.Decimal(0),
           createdby: 'admin',
@@ -83,7 +98,7 @@ export class CartService {
       });
     }
 
-    // 6. TẠO ORDERLINE CHA (BUNDLE)
+    // 6. TẠO ORDERLINE CHA
     const metadata = {
       bundleCode: bundle.code,
       strategy: bundle.priceStrategy,
@@ -108,15 +123,15 @@ export class CartService {
         orderId: order.orderId,
         bundleId,
         quantity,
-        unitPrice: unitPrice,
-        totalPrice: totalPrice,
+        unitPrice,
+        totalPrice,
         metadata,
         createdby: 'admin',
         createdtime: new Date(),
       },
     });
 
-    // 6.2 TẠO CHILDREN LINES (ẨN TRONG UI)
+    // 6.2 CHILDREN LINES
     for (const item of bundle.items) {
       const childQty = item.quantity * quantity;
       await this.prisma.orderLine.create({
@@ -139,13 +154,13 @@ export class CartService {
       });
     }
 
-    // 7. CẬP NHẬT TỔNG TIỀN – CHỈ TÍNH TỪ CHA
+    // 7. CẬP NHẬT TỔNG TIỀN
     const payableLines = await this.prisma.orderLine.findMany({
       where: {
         orderId: order.orderId,
         OR: [
-          { bundleId: { not: null } }, // Dòng bundle
-          { metadata: { path: ['$.isBundleItem'], not: true } }, // Dòng thường
+          { bundleId: { not: null } },
+          { metadata: { path: ['$.isBundleItem'], not: true } },
         ],
       },
       select: { totalPrice: true },

@@ -1,54 +1,79 @@
+// src/app.module.ts
 import {
   MiddlewareConsumer,
   Module,
   NestModule,
 } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ClsModule } from 'nestjs-cls';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '@/libs/database/prisma.module';
 import { CurrentUserMiddleware } from '@/libs/middlewares/current-user.middleware';
 import { appProviders } from './apps/app.providers';
+import { PrismaService } from '@/libs/database/prisma.service';
+import { ClsPluginTransactional } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 
 @Module({
   imports: [
     // --------------------------
-    // Cấu hình biến môi trường (.env)
+    // 1. Cấu hình .env (global)
     // --------------------------
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath:
-        process.env.NODE_ENV === 'production'
-          ? '.env.docker'
-          : '.env.local',
+        process.env.NODE_ENV === 'production' ? '.env.docker' : '.env.local',
     }),
 
     // --------------------------
-    // Prisma ORM (database)
+    // 2. CLS + Transactional (v3.1.0) – BẮT BUỘC
+    // --------------------------
+    ClsModule.forRoot({
+      global: true,
+      middleware: { mount: true },
+      plugins: [
+        new ClsPluginTransactional({
+          adapter: new TransactionalAdapterPrisma({
+            prismaInjectionToken: PrismaService, // ← class, không instance
+          }),
+        }),
+      ],
+    }),
+
+    // --------------------------
+    // 3. Prisma ORM
     // --------------------------
     PrismaModule,
 
     // --------------------------
-    // JWT Authentication
+    // 4. JWT Authentication
     // --------------------------
-    JwtModule.register({
-      secret:
-        process.env.JWT_SECRET ||
-        'LCT24H_6d73d681ed87961b07e4469f3a20f7e5',
-      signOptions: {
-        expiresIn: process.env.JWT_EXPIRES_IN || '1h',
+    JwtModule.registerAsync({
+      useFactory: () => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+          throw new Error('JWT_SECRET is missing in .env');
+        }
+        return {
+          secret,
+          signOptions: {
+            expiresIn: process.env.JWT_EXPIRES_IN
+              ? parseInt(process.env.JWT_EXPIRES_IN, 10)
+              : 3600,
+          },
+        };
       },
     }),
 
     // --------------------------
-    // Import các module ứng dụng
-    // (bao gồm cm_bundle, auth, sys_users, v.v.)
+    // 5. Import các module ứng dụng
     // --------------------------
     ...appProviders,
   ],
+  providers: [],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Middleware kiểm tra người dùng hiện tại (JWT)
     consumer.apply(CurrentUserMiddleware).forRoutes('*');
   }
 }
