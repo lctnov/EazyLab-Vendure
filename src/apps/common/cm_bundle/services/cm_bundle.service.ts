@@ -4,43 +4,47 @@ import { CmBundleRepository } from '../repositories/cm_bundle.repository';
 import { CreateBundleDto } from '../dto/create-cm_bundle.dto';
 import { UpdateBundleDto } from '../dto/update-cm_bundle.dto';
 import { AddItemDto } from '../dto/add-item.dto';
-import { PrismaService } from '@libs/database/prisma.service';
 import { PriceStrategy, Prisma } from '@prisma/client';
+import { BundleEntity } from '../entities/cm_bundle.entity';
+import { now } from '@/libs/utils/date.util';
 
 @Injectable()
 export class CmBundleService {
   constructor(
-    private repo: CmBundleRepository,
-    private prisma: PrismaService,
+    private readonly repo: CmBundleRepository,
   ) {}
 
-  async getBundles() {
+  async getBundles(): Promise<(BundleEntity & { finalPrice: number })[]> {
     const bundles = await this.repo.findAll();
-    return bundles.map(b => this.withFinalPrice(b));
+    return bundles.map((item) => this.withFinalPrice(item));
   }
 
-  async getBundle(id: bigint) {
-    const bundle = await this.repo.findById(id);
-    if (!bundle) throw new NotFoundException('Bundle not found');
+  async getBundle(bundleId: bigint): Promise<BundleEntity & { finalPrice: number }> {
+    const bundle = await this.repo.findById(bundleId);
+    if (!bundle) throw new NotFoundException('Không tìm thấy sản phẩm !!!');
     return this.withFinalPrice(bundle);
   }
 
-  async createBundle(dto: CreateBundleDto) {
+  async createBundle(dto: CreateBundleDto): Promise<BundleEntity & { finalPrice: number }> {
     const exists = await this.repo.findByCode(dto.code);
-    if (exists) throw new BadRequestException('Bundle code already exists');
+    if (exists) throw new BadRequestException('Sản phẩm đã tồn tại');
 
     const bundle = await this.repo.create({
       code: dto.code,
       name: dto.name,
-      description: dto.description,
-      priceStrategy: dto.priceStrategy,
-      discountValue: dto.discountValue,
-      fixedPrice: dto.fixedPrice ?? null,
+      description: dto.description ?? null,
+      priceStrategy: dto.priceStrategy ?? null,
+      discountValue: new Prisma.Decimal(dto.discountValue) ?? null,
+      fixedPrice: dto.fixedPrice ? new Prisma.Decimal(dto.fixedPrice) : null,
+      createdby: 'admin',
+      createdtime: now(),
       items: dto.items
         ? {
             create: dto.items.map((i) => ({
-              productVariantId: BigInt(i.productVariantId),
-              quantity: i.quantity,
+              variantId: BigInt(i.variantId),
+              quantity: i.quantity ?? null,
+              createdby: 'admin',
+              createdtime: now(),
             })),
           }
         : undefined,
@@ -49,82 +53,117 @@ export class CmBundleService {
     return this.withFinalPrice(bundle);
   }
 
-  async updateBundle(id: bigint, dto: UpdateBundleDto) {
-    const bundle = await this.repo.findById(id);
-    if (!bundle) throw new NotFoundException('Bundle not found');
+  async updateBundle(
+    bundleId: bigint,
+    dto: UpdateBundleDto,
+  ): Promise<BundleEntity & { finalPrice: number }> {
+    const bundle = await this.repo.findById(bundleId);
+    if (!bundle) throw new NotFoundException('Không tìm thấy sản phẩm !!!');
 
-    // CHUYỂN DTO → PRISMA INPUT
-    const updateData: any = {};
-    if (dto.name !== undefined) updateData.name = dto.name;
-    if (dto.description !== undefined) updateData.description = dto.description;
-    if (dto.priceStrategy !== undefined) updateData.priceStrategy = dto.priceStrategy;
-    if (dto.discountValue !== undefined) updateData.discountValue = dto.discountValue;
-    if (dto.fixedPrice !== undefined) updateData.fixedPrice = dto.fixedPrice;
+    const updateData: Prisma.BundleUpdateInput = {
+      modifiedby: 'admin',
+      modifiedtime: now(),
+    };
 
-    const updated = await this.repo.update(id, updateData);
+    if (dto.name) updateData.name = dto.name;
+    if (dto.description) updateData.description = dto.description;
+    if (dto.priceStrategy) updateData.priceStrategy = dto.priceStrategy;
+    if (dto.discountValue) {
+      updateData.discountValue = new Prisma.Decimal(dto.discountValue);
+    }
+    if (dto.fixedPrice) {
+      updateData.fixedPrice = dto.fixedPrice? new Prisma.Decimal(dto.fixedPrice) : null;
+    }
+
+    const updated = await this.repo.update(bundleId, updateData);
     return this.withFinalPrice(updated);
   }
 
   async addItem(bundleId: bigint, dto: AddItemDto) {
     const bundle = await this.repo.findById(bundleId);
-    if (!bundle) throw new NotFoundException('Bundle not found');
+    if (!bundle) throw new NotFoundException('Không tìm thấy sản phẩm !!!');
 
-    const items = bundle.items ?? [];
-    if (items.some((i: any) => i.productVariantId === BigInt(dto.productVariantId))) {
-      throw new BadRequestException('Variant already in bundle');
+    const bundleItems = bundle.items ?? [];
+    if (bundleItems.some((item) => item.variantId === BigInt(dto.variantId))) {
+      throw new BadRequestException('Tồn tại sản phẩm bên trong gói sản phẩm !!!');
     }
 
-    const newItem = await this.repo.addItem({
+    await this.repo.addItem({
       bundleId,
-      productVariantId: BigInt(dto.productVariantId),
-      quantity: dto.quantity,
+      variantId: BigInt(dto.variantId),
+      quantity: dto.quantity ?? null,
     });
 
     const updatedBundle = await this.repo.findById(bundleId);
     return this.withFinalPrice(updatedBundle!);
   }
 
-  async removeItem(itemId: bigint) {
-    const exists = await this.repo.findItemById(itemId);
-    console.log('exists', exists);
-    
-    if (!exists) throw new NotFoundException('Item not found');
+  async removeItem(bundleItemId: bigint) {
+    const exists = await this.repo.findItemById(bundleItemId);
+    if (!exists) throw new NotFoundException('Không tìm thấy danh sách sản phẩm !!!');
 
-    await this.repo.removeItem(itemId);
-    return { message: 'Item removed successfully' };
+    await this.repo.removeItem(bundleItemId);
+    return { message: 'Đã xóa sản phẩm thành công !!!' };
   }
 
-  private withFinalPrice(bundle: any) {
-    const items = bundle.items ?? [];
-  const sum = items.reduce((acc: Prisma.Decimal, item: any) => {
-    const price = new Prisma.Decimal(item.productVariant.price);
-    const qty = new Prisma.Decimal(item.quantity);
-    return acc.plus(price.mul(qty));
-  }, new Prisma.Decimal(0));
-
-  let finalPrice: Prisma.Decimal = sum;
-
-  switch (bundle.priceStrategy) {
-    case PriceStrategy.SUM:
-      finalPrice = sum;
-      break;
-    case PriceStrategy.FIXED:
-      finalPrice = bundle.fixedPrice ?? sum;
-      break;
-    case PriceStrategy.PERCENT:
-      const discount = new Prisma.Decimal(bundle.discountValue ?? 0);
-      finalPrice = sum.minus(sum.mul(discount).div(100));
-      break;
-  }
-
-  return {
-    ...bundle,
-    finalPrice: parseFloat(finalPrice.toString()), // Chuyển sang number để trả API
-  };
+  // === PRIVATE: Tính tổng giá ===
+  private withFinalPrice(bundle: BundleEntity): BundleEntity & { finalPrice: number } {
+    const bundleItems = bundle.items ?? [];
+    const sum = bundleItems.reduce((acc, item) => {
+      const price = new Prisma.Decimal(item.productVariant.price ?? 0);
+      const qty = new Prisma.Decimal(item.quantity ?? 0);
+      return acc.plus(price.mul(qty));
+    }, new Prisma.Decimal(0));
+  
+    let finalPrice: Prisma.Decimal = sum;
+  
+    switch (bundle.priceStrategy) {
+      case PriceStrategy.FIXED:
+        if (bundle.fixedPrice != null) {
+          finalPrice = new Prisma.Decimal(bundle.fixedPrice);
+        }
+        break;
+      case PriceStrategy.PERCENT:
+        const discount = new Prisma.Decimal(bundle.discountValue ?? 0);
+        const discountAmount = sum.mul(discount).div(100);
+        finalPrice = sum.minus(discountAmount);
+        break;
+      // case PriceStrategy.SUM: → mặc định là sum
+    }
+  
+    return {
+      ...bundle,
+      finalPrice: Number(finalPrice.toFixed(2)), // ← Number + toFixed(2)
+    };
   }
 
   async calculateBundlePrice(bundleId: bigint): Promise<number> {
     const bundle = await this.getBundle(bundleId);
     return bundle.finalPrice;
+  }
+
+  calculateFinalPrice(bundle: BundleEntity): number {
+    const items = bundle.items ?? [];
+    let sum = new Prisma.Decimal(0);
+
+    for (const item of items) {
+      const price = new Prisma.Decimal(item.productVariant.price) ?? 0;
+      const qty = new Prisma.Decimal(item.quantity) ?? 0;
+      sum = sum.plus(price.mul(qty));
+    }
+
+    let final: Prisma.Decimal = sum;
+
+    switch (bundle.priceStrategy) {
+      case PriceStrategy.FIXED:
+        if (bundle.fixedPrice) final = new Prisma.Decimal(bundle.fixedPrice);
+        break;
+      case PriceStrategy.PERCENT:
+        const discount = new Prisma.Decimal(bundle.discountValue ?? 0);
+        final = sum.minus(sum.mul(discount).div(100));
+        break;
+    }
+
+    return parseFloat(final.toFixed(2));
   }
 }

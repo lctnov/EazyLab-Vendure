@@ -1,40 +1,44 @@
 {
   "name": "vendure",
   "version": "0.0.1",
-  "description": "",
+  "description": "Vendure backend with NestJS, Prisma (multi-schema), Docker",
   "author": "EAZYLAB",
   "private": true,
-  "license": "EAZYLAB",
+  "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "seed": "ts-node prisma/seed.ts",
-    "prisma:generate": "npx prisma generate --schema=./prisma/global && npx prisma generate --schema=./prisma/log && npx prisma generate --schema=./prisma/main",
-    "prisma:global:migrate": "npx prisma migrate dev --schema=./prisma/global",
-    "prisma:log:migrate": "npx prisma migrate dev --schema=./prisma/log",
-    "prisma:main:migrate": "cross-env DATABASE_URL=postgresql://eazylab:Eazylab123@localhost:5432/vendure npx prisma migrate dev --schema=./prisma/main",
-    "prisma:global:migrate:prod": "npx prisma migrate deploy --schema=./prisma/global",
-    "prisma:log:migrate:prod": "npx prisma migrate deploy --schema=./prisma/log",
-    "prisma:main:migrate:prod": "npx prisma migrate deploy --schema=./prisma/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+
+    "dev": "nest start --watch",
+
+    "seed": "npx ts-node prisma/seed.ts",
+    "prisma:generate": "npx prisma generate",
+
+    "setup": "npm run prisma:generate && npm run prisma:migrate:dev",
+
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
+
   "prisma": {
-    "seed": "ts-node --project tsconfig.json prisma/seed.ts"
+    "seed": "npx ts-node prisma/seed.ts"
   },
+
   "dependencies": {
+    "@nestjs-cls/transactional": "^3.1.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
+    "nestjs-cls": "^6.0.1",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/passport": "^11.0.5",
@@ -49,8 +53,10 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0"
   },
+
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
@@ -66,6 +72,8 @@
     "@types/node": "^22.17.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "^10.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -82,20 +90,15 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
+
   "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
+    "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
+    "collectCoverageFrom": ["**/*.(t|j)s"],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

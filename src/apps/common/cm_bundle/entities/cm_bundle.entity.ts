@@ -1,19 +1,33 @@
-export interface BundleItemEntity {
-  id: bigint;
-  bundleId: bigint;
-  productVariantId: bigint;
-  quantity: number;
-}
+import { Decimal } from '@prisma/client/runtime/library';
 
-export interface BundleEntity {
-  id: bigint;
+export type BundleEntity = {
+  bundleId: bigint;
   code: string;
   name: string;
-  description?: string | null;
-  priceStrategy: 'sum' | 'fixed' | 'percent';
-  discountValue?: number | null;
-  fixedPrice?: number;
-  createdAt: Date;
-  updatedAt: Date;
-  items?: BundleItemEntity[];
-}
+  description: string | null;
+  priceStrategy: 'SUM' | 'FIXED' | 'PERCENT';
+  discountValue: Decimal;
+  fixedPrice: Decimal | null;
+  createdby: string;
+  createdtime: Date;
+  modifiedby: string | null;
+  modifiedtime: Date | null;
+  items: BundleItemEntity[];
+};
+
+export type BundleItemEntity = {
+  bundleItemId: bigint;
+  bundleId: bigint;
+  variantId: bigint;
+  quantity: number;
+  createdby: string;
+  createdtime: Date;
+  modifiedby: string | null;
+  modifiedtime: Date | null;
+  productVariant: {
+    variantId: bigint;
+    name: string;
+    price: Decimal;
+    sku: string;
+  };
+};

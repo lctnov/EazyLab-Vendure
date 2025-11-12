@@ -1,5 +1,5 @@
 export enum PriceStrategy {
-	SUM = 'sum',
-	FIXED = 'fixed',
-	PERCENT = 'percent',
+	SUM = 'SUM',
+	FIXED = 'FIXED',
+	PERCENT = 'PERCENT',
   }

@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { CmBundleController } from './controllers/cm_bundle.controller';
 import { CmBundleService } from './services/cm_bundle.service';
 import { CmBundleRepository } from './repositories/cm_bundle.repository';
-import { PrismaModule } from '@/libs/database/prisma.module';
+import { AuthModule } from '@/apps/auth/auth.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [AuthModule],
   controllers: [CmBundleController],
   providers: [CmBundleService, CmBundleRepository],
   exports: [CmBundleService],

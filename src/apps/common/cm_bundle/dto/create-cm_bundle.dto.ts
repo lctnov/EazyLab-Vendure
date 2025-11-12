@@ -1,13 +1,13 @@
-import { IsString, IsEnum, IsOptional, IsNumber, ValidateNested, ArrayMinSize, Min } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PriceStrategy, Prisma } from '@prisma/client';
+import { PriceStrategy } from '@prisma/client';
 
-class BundleItemInput {
-  @IsNumber()
+class BundleItemDto {
+  @IsInt()
   @Type(() => Number)
-  productVariantId: number;
+  variantId: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
   @Type(() => Number)
   quantity: number;
@@ -24,21 +24,20 @@ export class CreateBundleDto {
   @IsString()
   description?: string;
 
-  @IsEnum(PriceStrategy, { message: 'priceStrategy must be SUM, FIXED or PERCENT' })
+  @IsString()
   priceStrategy: PriceStrategy;
 
-  @IsNumber()
-  @Type(() => Number)
+  @IsInt()
   discountValue: number;
 
   @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => BundleItemInput)
-  @ArrayMinSize(0)
-  items?: BundleItemInput[];
+  @IsInt()
+  @Type(() => Number)
+  fixedPrice?: number;
 
   @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  fixedPrice?: Prisma.Decimal | 0;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BundleItemDto)
+  items?: BundleItemDto[];
 }

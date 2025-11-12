@@ -1,10 +1,3 @@
-// PATCH BigInt toàn cục - DÙNG 'as any' ĐỂ TRÁNH LỖI TS
-if (!(BigInt.prototype as any).toJSON) {
-  (BigInt.prototype as any).toJSON = function () {
-    return this.toString();
-  };
-}
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
@@ -13,16 +6,17 @@ import { ResponseInterceptor } from '@/libs/interceptors/response.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { CookieJwtGuard } from './apps/common/guards/cookie-jwt.guard';
+import { Reflector } from '@nestjs/core';
+import { AuthService } from './apps/auth/services/auth/auth.service';
+import { HttpExceptionFilter } from './libs/filters/http-exception.filter';
 
 async function bootstrap() {
   // --------------------------
   // Load .env theo môi trường
   // --------------------------
   const nodeEnv = process.env.NODE_ENV || 'development';
-  const envFile =
-    nodeEnv === 'docker'
-      ? path.join(__dirname, '..', '.env.docker')
-      : path.join(__dirname, '..', '.env.local');
+  const envFile = nodeEnv === 'docker' ? path.join(__dirname, '..', '.env.docker') : path.join(__dirname, '..', '.env.local');
 
   dotenv.config({ path: envFile });
 
@@ -34,6 +28,12 @@ async function bootstrap() {
   // --------------------------
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
+
+
+  const reflector = app.get(Reflector);
+  const authService = app.get(AuthService);
+
+  app.useGlobalGuards(new CookieJwtGuard(authService, reflector));
 
   // --------------------------
   // Middleware
@@ -51,8 +51,8 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
       transform: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
@@ -61,7 +61,7 @@ async function bootstrap() {
   // --------------------------
   const coreHandler = new ResponseInterceptor();
   app.useGlobalInterceptors(coreHandler);
-  app.useGlobalFilters(coreHandler);
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // --------------------------
   // Swagger Documentation
@@ -86,7 +86,9 @@ async function bootstrap() {
   // --------------------------
   const PORT = Number(process.env.PORT) || 1211;
   await app.listen(PORT, '0.0.0.0');
-  const hostPort = nodeEnv === 'docker' ? 3334 : PORT;
+  console.log('nodeEnv', nodeEnv);
+  
+  const hostPort = nodeEnv === 'production' ? 1311 : PORT;
 
   console.clear();
   console.log(`Backend running at: http://localhost:${hostPort}/api`);

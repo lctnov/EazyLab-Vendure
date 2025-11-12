@@ -6,7 +6,7 @@ export const BUNDLE_STATUS = {
   } as const;
   
   export const BUNDLE_ERROR = {
-	NOT_FOUND: 'Bundle not found',
+	NOT_FOUND: 'Không tìm thấy sản phẩm !!!',
 	INVALID_STRATEGY: 'Invalid price strategy',
 	OUT_OF_STOCK: 'Bundle out of stock',
   } as const;

@@ -1,11 +1,15 @@
-# Core A: Bundle Plugin
+---
+title: EazyLab-Vendure
+description: Bundle Plugin với Reserved Stock & JWT Cookie Auth
+---
 
-> **Tính năng**: Tạo combo sản phẩm với 3 chiến lược giá:  
-> - `SUM`: Tổng giá gốc  
-> - `FIXED`: Giá cố định  
-> - `PERCENT`: Giảm X% trên tổng  
->
-> **Hỗ trợ**: Giá lẻ (Decimal), metadata chi tiết, thêm/xóa item, tích hợp giỏ hàng.
+# EazyLab-Vendure: Bundle & Cart Plugin
+
+> **Tính năng chính**:
+> - **Core A**: Tạo combo sản phẩm với 3 chiến lược giá: `SUM`, `FIXED`, `PERCENT`
+> - **Core B**: Quản lý **tồn kho dự phòng (reserved stock)**, **atomic transaction**, chống **oversell**
+> - **Xác thực**: JWT qua **Cookie**, chỉ `/auth/login` & `/auth/register` là **public**
+> - **Hỗ trợ**: Giá lẻ (Decimal), metadata chi tiết, thêm/xóa item, tích hợp giỏ hàng an toàn
 
 ---
 
@@ -61,13 +65,29 @@ npm run start:dev
 # Production : PORT 1311
 npm run start:prod
 
-########################### API ###########################
-# POST    /bundle (SUM)        Tạo combo tổng giá
-# POST    /bundle (FIXED)      Tạo combo giá cố định
-# POST    /bundle (PERCENT)    Tạo combo giảm %
-# POST    /bundle/:id/item     Thêm sản phẩm vào bundle
-# PUT     /bundle/:id          Cập nhật chiến lược
-# POST    /cart/bundle         Thêm bundle vào giỏ
-# DELETE  /bundle/item/:id     Xóa item
-###########################################################
+#################################### API - Quản lý gói sản phẩm ####################################
+# GET       /api/v1/getAll                                        Lấy tất cả các gói sản phẩm
+# GET       /api/v1/get/{bundleID}                                Lấy chi tiết sản phẩm theo gói
+# POST      /api/v1/create                                        Tạo mới gói sản phẩm
+# PATCH     /api/v1/update/{bundleID}                             Cập nhật thông tin gói sản phẩm
+# POST      /api/v1/bundleItems/create                            Tạo chi tiết gói sản phẩm
+# DELETE    /api/v1/bundleItems/{bundleID}                        Xóa các gói chi tiết sản phẩm
+# GET       /api/v1/bundleItems/calculatorPrice/{bundleID}        Tính giá theo chi tiết sản phẩm
+####################################################################################################
 
+############################### API - Quản lý danh sách thanh toán ###############################
+# POST       /api/v1/{cartID}                                        Lấy tất cả các gói sản phẩm
+##################################################################################################
+
+#################################### API - Quản lý gói sản phẩm ####################################
+# GET       /api/v1/getAll                                        Lấy tất cả các gói sản phẩm
+####################################################################################################
+
+#################################### API - Quản lý đơn hàng ########################################
+# GET       /api/v1/getAll                                        Lấy tất cả các gói sản phẩm
+# GET       /api/v1/get/{bundleID}                                 Lấy chi tiết sản phẩm theo gói
+####################################################################################################
+
+## Bundle trong Cart/Order – 2 cách hiển thị
+
+### Cách 1: **1 dòng duy nhất (khuyên dùng)**

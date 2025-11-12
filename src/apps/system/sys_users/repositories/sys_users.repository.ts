@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@libs/database/prisma.service';
 import { CreateSysUserDto } from '../dto/create-sys_users.dto';
-import { UpdateSysUserDto } from '../dto/update-sys_users.dto';
+import { now } from '@/libs/utils/date.util';
 
 @Injectable()
 export class SysUsersRepository {
@@ -28,18 +28,10 @@ export class SysUsersRepository {
         isactive: dto.isactive ?? true,
         role: 'admin',
         createdby: dto.createdby,
-        createdtime: new Date(),
+        createdtime: now(),
       },
     });
   }
-
-  // update(rowguid: string, data: UpdateSysUserDto) {
-  //   let data:any = {...data, role: 'admin'};
-  //   return this.prisma.sYS_USERS.update({
-  //     where: { rowguid },
-  //     data,
-  //   });
-  // }
 
   delete(rowguid: string) {
     return this.prisma.sYS_USERS.delete({ where: { rowguid } });

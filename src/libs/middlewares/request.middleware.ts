@@ -1,19 +1,22 @@
-import { Injectable, NestMiddleware, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NestMiddleware,
+  BadRequestException,
+} from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
+import { ClassConstructor, plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class RequestMiddleware implements NestMiddleware {
-  use(req: Request, _res: Response, next: NextFunction) {
-    // Ví dụ kiểm tra Content-Type
+  use(req: Request, res: Response, next: NextFunction) {
     if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
       if (!req.is('application/json')) {
-        throw new BadRequestException('Request must be JSON');
+        throw new BadRequestException('Content-Type must be application/json');
       }
     }
 
-    // Ví dụ kiểm tra header API version
     if (!req.headers['x-api-version']) {
-      throw new BadRequestException('Missing API version header');
+      throw new BadRequestException('Missing header: x-api-version');
     }
 
     next();

@@ -20,7 +20,7 @@ export class AuthRepository {
         username: data.username,
         password: data.password,
         role: 'admin',
-        createdby: 'system',
+        createdby: 'admin',
         createdtime: now(),
         rowguid: crypto.randomUUID(),
       },

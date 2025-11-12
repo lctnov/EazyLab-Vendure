@@ -1,90 +1,69 @@
-// src/libs/interceptors/response.interceptor.ts
-import {
-	Injectable,
-	NestInterceptor,
-	ExecutionContext,
-	CallHandler,
-	ArgumentsHost,
-	ExceptionFilter,
-	Catch,
-	HttpException,
-	Logger,
-  } from '@nestjs/common';
-  import { Observable, throwError } from 'rxjs';
-  import { map, catchError } from 'rxjs/operators';
+import {Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { Observable, throwError } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
   
-  @Injectable()
-  @Catch()
-  export class ResponseInterceptor
-	implements NestInterceptor, ExceptionFilter
-  {
-	private readonly logger = new Logger(ResponseInterceptor.name);
-  
-	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-	  return next.handle().pipe(
-		map((data) => {
-		  const transformed = this.transformBigInt(data);
-		  this.logger.debug('Success payload:', transformed);
-  
-		  if (data && typeof data === 'object' && 'status' in data) {
-			return {
-			  iPayload: data.status ? this.transformBigInt(data.payload) : [],
-			  iStatus: data.status,
-			  iMessage: data.message || 'Success',
-			};
-		  }
-  
-		  return {
-			iPayload: transformed,
-			iStatus: true,
-			iMessage: 'Success',
-		  };
-		}),
-		catchError((err) => {
-		  this.logger.error('Error in interceptor:', err);
-		  return throwError(() => err);
-		}),
+@Injectable()
+export class ResponseInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(ResponseInterceptor.name);
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    return next.handle().pipe(
+      map((data) => {
+        const payload = this.transformBigInt(data);
+
+        // 1. Nếu là object có status (từ service)
+        if (data && typeof data === 'object' && 'status' in data) {
+          return {
+            iPayload: this.transformBigInt(data.payload ?? data),
+            iStatus: data.status,
+            iMessage: data.message || (data.status ? 'Success' : 'Fail'),
+          };
+        }
+
+        // 2. Nếu là mảng (report, list)
+        if (Array.isArray(payload)) {
+          return {
+            iPayload: payload,
+            iStatus: true,
+            iMessage: payload.length > 0 ? 'Success' : 'No data found',
+          };
+        }
+
+        // 3. Nếu là object thường
+        if (payload && typeof payload === 'object') {
+          return {
+            iPayload: payload,
+            iStatus: true,
+            iMessage: 'Success',
+          };
+        }
+
+        // 4. Primitive hoặc null
+        return {
+          iPayload: payload,
+          iStatus: true,
+          iMessage: 'Success',
+        };
+      }),
+      catchError((err) => {
+        this.logger.error('Interceptor caught error:', err);
+        return throwError(() => err);
+      }),
+    );
+  }
+
+  // XỬ LÝ LỖI RIÊNG QUA ExceptionFilter
+  private transformBigInt(value: any): any {
+	if (value === null || value === undefined) return value;
+	if (typeof value === 'bigint') return value.toString();
+	if (value instanceof Prisma.Decimal) return Number(value.toFixed(2)); // ← SỬA
+	if (Array.isArray(value)) return value.map(v => this.transformBigInt(v));
+	if (typeof value === 'object') {
+	  return Object.fromEntries(
+		Object.entries(value).map(([k, v]) => [k, this.transformBigInt(v)])
 	  );
 	}
-  
-	catch(exception: unknown, host: ArgumentsHost) {
-	  const ctx = host.switchToHttp();
-	  const res = ctx.getResponse();
-  
-	  let message = 'Internal server error';
-	  let statusCode = 500;
-  
-	  if (exception instanceof HttpException) {
-		const response: any = exception.getResponse();
-		statusCode = exception.getStatus();
-		message = typeof response === 'string' ? response : response?.message || message;
-	  } else if (exception instanceof Error) {
-		message = exception.message;
-		if (message.includes('BigInt')) {
-		  message = 'Server error: Invalid data format';
-		}
-	  }
-  
-	  this.logger.error(`API Error: ${message}`, exception instanceof Error ? exception.stack : '');
-  
-	  res.status(200).json({
-		iPayload: null,
-		iStatus: false,
-		iMessage: message,
-	  });
-	}
-  
-	private transformBigInt(value: any): any {
-	  if (value === null || value === undefined) return value;
-	  if (typeof value === 'bigint') return value.toString();
-	  if (Array.isArray(value)) return value.map(v => this.transformBigInt(v));
-	  if (typeof value === 'object') {
-		const obj: any = {};
-		for (const key in value) {
-		  obj[key] = this.transformBigInt(value[key]);
-		}
-		return obj;
-	  }
-	  return value;
-	}
+	return value;
   }
+}

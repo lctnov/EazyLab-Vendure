@@ -1,15 +1,13 @@
 import { AuthModule } from '@/apps/auth/auth.module';
-import { SysUsersModule } from '@/apps/system/sys_users/sys_users.module';
 import { CmBundleModule } from '@/apps/common/cm_bundle/cm_bundle.module';
-// import { InventoryModule } from '@/apps/common/inventory/inventory.module';
-// import { OrderModule } from '@/apps/common/order/order.module';
-// import { CartModule } from '@/apps/common/cart/cart.module';
+import { CartModule } from '@/apps/common/cm_cart/cm_cart.module';
+import { CmOrderModule } from '@/apps/common/cm_order/cm_order.module';
+import { RpTopBundleModule } from '@/apps/reports/rp_topBundleProduct/rp_top-bundle.module';
 
 export const appProviders = [
 	AuthModule,
-	// SysUsersModule,
 	CmBundleModule,
-//   InventoryModule,
-//   OrderModule,
-//   CartModule,
+	CartModule,
+	CmOrderModule,
+	RpTopBundleModule,
 ];

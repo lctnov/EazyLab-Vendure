@@ -79,7 +79,7 @@ export class SysUser {
 
   @ApiProperty({
     description: 'Người tạo bản ghi',
-    example: 'system',
+    example: 'admin',
   })
   createdby: string;
 

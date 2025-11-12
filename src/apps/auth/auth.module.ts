@@ -1,4 +1,3 @@
-// src/modules/apis/auth.module.ts
 import { Module } from '@nestjs/common';
 import { AuthService } from './services/auth/auth.service';
 import { AuthController } from './controllers/auth.controller';
@@ -7,14 +6,29 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '@/libs/strategies/auth.strategy';
 import { PrismaModule } from '@/libs/database/prisma.module';
 import { AuthRepository } from './repositories/auth.repository';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule,
     PrismaModule,
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        
+        if (!secret) {
+          throw new Error('JWT_SECRET is not defined');
+        }
+        return {
+          secret,
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h',
+          },
+        };
+      },
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],

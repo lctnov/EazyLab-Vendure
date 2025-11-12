@@ -121,7 +121,7 @@ export class AuthService {
       if (err.name === 'TokenExpiredError') {
         return {
           iPayload: null,
-          iStatus: false, // SỬA: HẾT HẠN → false
+          iStatus: false,
           iMessage: 'Token đã hết hạn',
         };
       }
@@ -130,6 +130,23 @@ export class AuthService {
         iStatus: false,
         iMessage: 'Token không hợp lệ',
       };
+    }
+  }
+
+  // verifyToken cho Guard
+  async verifyToken(token: string) {
+    if (!token) {
+      throw new UnauthorizedException('Không có mã thông báo nào được cung cấp');
+    }
+
+    try {
+      const decoded = this.jwtService.verify(token);
+      return decoded; // Trả về payload
+    } catch (err: any) {
+      if (err.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Token đã hết hạn');
+      }
+      throw new UnauthorizedException('Token không hợp lệ');
     }
   }
 
